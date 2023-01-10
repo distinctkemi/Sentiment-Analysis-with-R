@@ -1,0 +1,370 @@
+---
+title: "MA331-Coursework"
+author: "2110390-Adekemi-Kadri"
+subtitle: Text analytics of the TED talks by Marco Tempest and Michael Shermer
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE, message=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)  
+# Loading Libraries
+#===============================================================================
+
+#Packages
+#install.packages("tm")
+#install.packages("wordcloud") # word-cloud generator 
+
+library(dsEssex) #To get the ted talk data
+library(tidyverse)#To tidy data
+library(tidytext) #For functions and supporting data sets for text conversion  to and from tidy formats, 
+library(stopwords) #To remove stopwords e.g and, this etc
+library(scales) #map data to aesthetics
+library(plotly) #For graph plots
+library(ggrepel) #o repel overlapping text labels away from each other
+library(dplyr) #For data manipulation
+library(stringr) #For string manipulation
+library(wordcloud) #for generating the word cloud plot
+library(tm) #for text mining
+
+
+# loading the 'ted_talks' data 
+data(ted_talks) 
+```
+
+**INTRODUCTION**
+
+The following report is based on word frequency comparisons and sentiment analysis of  five (5) transcripts of TED talks of Marco Tempest and Michael Shermer. Sentiment Analysis is a process of extracting opinions that have different scores like positive, negative or neutral.It is a type of classification where data is classified into different classes like positive or negative or happy, sad, angry, etc.
+
+**About Marco Tempest & Michael Shermer; and their Ted Talks to be Analysed**
+
+Marco Tempest is an internationally renowned stage magician, illusionist who uses video and digital technology to create contemporary illusions. In this report the following talks by Marco were analysed;
+
+1. A magical tale (augmented reality) in March 2012: In this ted talk Marco used a augmented reality machine and his hands to create extraordinary illusions that convey the essence of magic, how it entertain us and reveals our humanity in a beautiful fashion.
+
+2. The electric rise and fall of Nikola Tesla (March 2012): By combining projection mapping and a pop-up book, Marc tells the visually arresting story of Nikola Tesla- known as "the greatest geek of all time"- from the triumphant invention of alternating current to his penniless end.
+
+3. And for my next trick, a robot (March 2014): With charming stagecraft, Marco showcased EDI, the multi-purpose robot capable of working very closely with humans.More like an elaborately choreographed show, he showed of the robot's capabilities, sensing features, safety features, and strength.
+
+
+On the other hand, Michael Shermer in his ted talks debunks myths, superstitions and urban legends with explanations on why people believe them. In this report the following talks were analysed for Michael Shermer;
+
+1. Why people believe weird things and The pattern behind self-deception (February 2006): In this talk, Michael described how people see the Virgin Mary on a cheese sandwich or hear demonic lyrics in stairway to heaven. He used video and music to reveal how we convince ourselved to believe and ignore the facts.
+
+2. The pattern behind self-deception (February 2010): According to Michael in this talk, the human tendency to believe strange things, from alien abductions to dowsing rods has to do with the brain's most fundamental hard-wired survival techniques.
+
+```{r echo=FALSE}
+#Tabular visual of the ted talks and dates##########################################
+############  Michael Shermer ###############
+
+#1. (Why people believe weird Things in February 2006)
+ms1_year <- c('Feb 2006')
+
+#2. (The pattern behind self-deception in February 2010)
+ms2_year <- c('Feb 2010')
+
+################## MARCO TEMPEST #############################################
+#1. A magical tale (with augmented reality)
+
+mt2_year <-  c('March 2012')
+
+#2. The electric rise and fall of Nikola Tesla
+mt1_year <-  c('March 2012')
+
+#3. And for my next trick, a robot
+mt3_year <-  c('March 2014')
+
+
+month <- c(ms1_year, ms2_year, mt1_year, mt2_year, mt2_year)
+
+#Creating a column that included  
+ted_talks %>%
+  filter(speaker %in% c("Marco Tempest", "Michael Shermer"))%>%
+  select (speaker, headline) %>%
+  mutate(Year_of_Talk = month)
+```
+**_Table 1: Ted Talk Data_**
+
+
+```{r,}
+#Filtering Marco Tempest & Michael Shermer Ted Talks from the ted_talk dataset
+MyData <-  ted_talks %>%
+  filter(speaker %in% c("Marco Tempest", "Michael Shermer"))
+```
+
+
+```{r data, message=FALSE,}
+##Transforming non-tidy text data into tidy text and also removing the stopwords from the data
+tidy_data <- MyData %>%
+  unnest_tokens(word, text) %>% #Function to tidy the words of the speakers
+  dplyr::anti_join(get_stopwords()) #Function to remove stop words 
+```
+**METHODOLOGY**
+
+Two function of the sentiment score methods and emotion classification will be used for the sentiment analysis. Before the analysis, the transcript would be tidy using the tidyverse library and stop words would be removed, stopwords are the most commonly occurring words in a language and have very little value in terms of gaining useful information. Examples of stopwords in English are “the, is, at, on”.
+
+**i. Sentiment score:** Sentiments can be classified as positive, neutral or negative. To better express the strength of positive or negative sentiment, they can also be expressed on a numeric scale. For this analysis, we will be using the "bing" and "nrc" function for the sentiment analysis. Statistics summary of the sentiment derived from the "bing" function will be used for the sentiment score.
+
+
+**ii. Emotion Classification:** Emotion classification is built on the NRC Word-Emotion Association Lexicon (aka EmoLex). “The NRC Emotion Lexicon is a list of English words and their associations with eight basic emotions (anger, fear, anticipation, trust, surprise, sadness, joy, and disgust) and two sentiments (negative and positive). In this analysis, log odds ration on "nrc" function will be used to get the emotion classification for both speakers.
+
+
+**Log odds ratio**
+Logging the odds ratio provides a measure that is symmetric when comparing the usage of word across the ted talks.Log odds ratio of words is given as:  
+$$log( O^i_{w}/ O^j_{w})$$
+where i and j represent each ted talk speakers.
+
+**Visualisation**
+
+Word cloud and geom_bar will be used to view each speaker's words and the ggrepel visualisation function will be used to compare them. A word cloud is one of the most popular ways to visualize and analyze qualitative data. It’s an image composed of keywords found within a body of text, where the size of each word indicates its frequency in that body of text.
+
+
+**RESULTS**
+
+**Analysis of each Ted Talk speaker** 
+
+Marco Tempest word analysis
+
+```{r, echo=FALSE}
+#Selecting and analysing words by Marco tempest 
+Macro_words <- tidy_data %>%
+  dplyr::filter(speaker == "Marco Tempest") %>% #Selecting only Marco,s words from the data
+  dplyr::count(speaker, word, sort = TRUE) #Word count for Marco
+
+Macro_words %>%
+  dplyr::slice_max(n, n = 25) %>% #selects 30 words said by Marco Tempest in the Ted Talks
+  dplyr::mutate(word = reorder(word, n)) %>% #Creates a new column with the heading Word 
+  ggplot2::ggplot(aes(n, word)) + ggplot2::geom_col(fill= 'steelblue')+ #Potting Marco words
+  geom_text(aes(label = n), vjust = 0.5, hjust=1.1, size = 2.5) +
+  ggtitle('Marco Tempest Top Words')+
+  labs(y = 'Word', x= 'Frequency') +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2.12, face = 'bold'))
+
+
+```
+
+**_Figure 1: Marco Tempest Top Words_**
+
+The chart above shows that 'edi' has the highest frequency translating to Electronic Deceptive Intelligence, followed by 'mt' which is the initials of Marco Tempest, a sign that Marco has resumed talking from the transcript, should he have changed his voice. In his lecture, “the electric rise and fall of Nikola Tesla”, nt stands for Nikola Tesla. Also, this chart contains the key word applause, found in the transcript when the audience clapped during the Ted Talk and not a word said by Marco.In light of this, words like mt and applause will be omitted from our analysis, as these are just translations of reactions and nothing said by Marco.
+
+```{r, message=FALSE, echo=FALSE}
+###########Filtering and removing irrelevant words for Macro Tempest  Ted Talk##################
+
+ 
+#Created a variable called iw (irrelevatnt words) to filter and store the words through Marco words
+iw <- Macro_words %>% 
+  filter(word == "applause" | word =="mt")
+
+ 
+MarcoWords_without_iw <-  Macro_words %>%
+  anti_join(iw)
+```
+
+```{r,}
+#generating word cloud for Michael Shermer
+set.seed(1234)
+wordcloud(words = MarcoWords_without_iw$word, freq = MarcoWords_without_iw$n, min.freq = 5,
+          max.words=100, random.order=FALSE, rot.per=0.40, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+**_Fig 2: Marco Tempest Word Cloud_**
+
+
+**Michael Shermer Top Words**
+
+```{r, message=FALSE}
+##############Michael Shermer Word Analysis########################################
+
+Michael_words <- tidy_data %>%
+  dplyr::filter(speaker == "Michael Shermer") %>% 
+  dplyr::count(speaker, word, sort = TRUE)
+
+Michael_words %>%
+  dplyr::slice_max(n, n = 25) %>%
+  dplyr::mutate(word = reorder(word, n)) %>%
+  ggplot2::ggplot(aes(n, word)) + ggplot2::geom_col(fill= '#B4464B')+
+  geom_text(aes(label = n), vjust = 0.5, hjust=1.1, size = 2.5) +
+  ggtitle('Michael Shermer Top Words')+
+  labs(y = 'Word', x= 'Frequency') +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2.12, face = 'bold'))
+
+```
+
+**_Fig 3: Michael Schermer Top Words_**
+
+The chart above shows that "see", "one", "just" are Michael top three words with the frequency of 43, 31 and 31 respectively.  Also, this chart contains the key word laughter, found in the transcript when the audience clapped during the Ted Talk and not a word said by Marco.
+
+
+
+```{r, message=FALSE}
+#Created a variable called iw_ms(irrelevatnt words) to filter and store the words through Michael words
+#Saving the word laughter into a variable 
+iw_ms <- Michael_words %>% 
+  filter(word == "laughter")
+
+#Removing the laughter word from all Michael's words and saving it into a variable
+MS_word <- Michael_words %>%
+  anti_join(iw_ms)
+
+```
+
+```{r, message=FALSE}
+#generating word cloud for Michael Shermer
+set.seed(1234)
+wordcloud(words = MS_word$word, freq = MS_word$n, min.freq = 5,
+          max.words=100, random.order=FALSE, rot.per=0.40, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+**_Fig 4: Michael Shermer Top Words_**
+
+
+
+**Word Comparison of Both Speakers**
+```{r, message=FALSE}
+
+#Plotting the word of the two TED speakers against each other to check for common word
+
+tidy_data %>%
+  filter(speaker %in% c("Marco Tempest", "Michael Shermer")) %>%
+  anti_join(get_stopwords()) %>%
+  count(speaker, word) %>%
+  group_by(word) %>%
+  filter(sum(n) > 10) %>%
+  ungroup() %>%
+  pivot_wider(names_from = "speaker", values_from = "n", values_fill = 0) %>%
+  ggplot(aes(`Michael Shermer`, `Marco Tempest`)) +
+  geom_abline(color = "blue", size = 1.2, alpha = 0.8, lty = 2) +
+  geom_text_repel(aes(label = word), max.overlaps = 15)+
+  ggtitle("Comparison of Marco Tempest's and Michael Shermer's words") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2.12, face = 'bold'))
+```
+
+
+**_Fig 5: Word Comparison of Marco Tempest & Michael Shermer_**
+
+
+Fig 5 is a plot of the Macro Tempest words vs. those of Michael Shermer. Marco's words appear on the left side whereas Michael's appear on the right. The words on the line represent the words both speakers used, words like "something","make", "way" are the common words that are used by both speakers.
+
+
+
+**SENTIMENT ANALYSIS**
+
+**a. Sentiment Score ('bing' function)**
+
+```{r, message=FALSE}
+#Using bing lexicon for sentiment analysis on both speakers 
+bing_sentiment <- 
+  tidy_data %>%
+  inner_join(get_sentiments('bing'), by = 'word')
+
+bing_sentiment %>% select(headline, speaker, word, sentiment) %>% 
+  count(speaker, word, sentiment, sort = FALSE)
+
+#counting by word and sentiment to generate a plot to compare both speakers
+word_counts <- bing_sentiment %>%
+  count(word, sentiment, speaker)
+
+#Grouping by sentiment and speaker
+top_words <- word_counts %>%
+  group_by(sentiment, speaker) %>%
+  slice_max(n, n = 10) %>%
+  mutate(word = reorder(word, n)) %>%
+  ungroup()
+
+#Plotting the sentiment comparison between both speakers
+ggplot(top_words, aes(n, word, fill = speaker),  ) +
+  geom_col(show.legend = TRUE) +
+  facet_wrap(~ sentiment, scales = "free")
+
+```
+
+**_Fig 6: Sentiment Score Analysis_** 
+
+Fig 6 above shows the sentiment analysis of the two TED speakers; using the legend, we can see that Michael Shermer has more negative words, 17 words out of the 26 words in the sentiment analysis, both have equal numbers of positive words with 11 numbers each.
+
+
+
+```{r, message=FALSE}
+#Total number of positive and negative words by each speaker for Sentiment score
+sent_nos <- tidy_data %>%
+  inner_join(get_sentiments("bing"), by = "word") %>%
+  filter(sentiment %in% c("positive", "negative")) %>% 
+  count(sentiment, speaker)
+sent_nos
+```
+
+**_Table 3: Positive and Negative Words For Each Speaker(Sentiment Score)_**
+
+
+**b.Emotional Classificaton (nrc function)**
+
+```{r, message=FALSE}
+#Sentiment Analysis of both speakers using nrc function
+TidyTalk_sentiments <- 
+  tidy_data %>%
+  inner_join(get_sentiments('nrc'), by = 'word')%>%
+  select(speaker, word, sentiment)
+
+```
+
+
+
+The table below shows the sentiment of each speaker using emotional classification and the log odds ratio of the sentiments.
+
+```{r, echo=FALSE, message=FALSE}
+#Using log odds ratio to for the summary statistics of Emotional classification
+tidy_data %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  count(speaker, sentiment) %>%
+  pivot_wider(names_from = speaker, values_from = n, values_fill = 0) %>%
+  mutate(OR = dsEssex::compute_OR(`Marco Tempest`, `Michael Shermer`, correction = FALSE), log_OR = log(OR), sentiment = reorder(sentiment, log_OR))
+
+```
+
+**_Table 4: Sentiment and Log odds ratio of Marco Tempest & Michael Shermer_**
+
+
+
+```{r, message=FALSE}
+#Total number of positive and negative words by each speaker for Emotional Classification
+sent_no <- tidy_data %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  filter(sentiment %in% c("positive", "negative")) %>% 
+  count(sentiment, speaker)
+```
+
+**_Table 5: Total Number of Positive & Negative Words of the speakers using Emotional Classification_**q
+
+
+```{r, echo=FALSE, message=FALSE}
+tidy_data %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  count(speaker, sentiment) %>%
+  pivot_wider(names_from = speaker, values_from = n, values_fill = 0) %>%
+  mutate(OR = dsEssex::compute_OR(`Marco Tempest`, `Michael Shermer`, correction = FALSE), log_OR = log(OR), sentiment = reorder(sentiment, log_OR)) %>%
+  ggplot(aes(sentiment, log_OR, fill = log_OR < 0)) +
+  geom_col(show.legend = FALSE) +
+  ylab("Log odds ratio") + ggtitle("The association between sentiments") +
+  coord_flip() + 
+  scale_fill_manual(name = "", values = c("steel blue", "#B4464B")) 
+
+
+     
+
+```
+
+**_Fig 7: Emotional Classification Analysis_**
+
+This chart shows that both speakers have higher number of negative words compared to positive words during their Ted talks.
+
+
+
+**DISCUSSION**
+
+Sentiment analysis provides a way to understand the attitudes and opinions expressed in words. In this report, we explored how to approach sentiment analysis using tidy data principles; when text data is in a tidy data structure, sentiment analysis can be implemented as an inner join.Using two methods of sentiment analysis on the TED talk data, it was observed that Michael Shermer used many negative words during shows compared Marco Tempest.
+
